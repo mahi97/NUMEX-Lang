@@ -37,6 +37,8 @@
 (struct munit   ()      #:transparent) ;; unit value -- good for ending a list
 (struct ismunit (e)     #:transparent) ;; if e1 is unit then true else false
 
+(struct func (n b) #:transparent)
+
 ;; a closure is not in "source" programs; it is what functions evaluate to
 (struct closure (env f) #:transparent) 
 
@@ -76,9 +78,29 @@
   (cond [(var? e)  ;; Variables
          (envlookup env (var-string e))]
 
-        ;;
-        ;; Conditions 
-        ;;
+       ;;
+       ;; Other 
+       ;;
+
+       [(func? e)
+        (eval-under-env () env)
+         )]
+        
+       [(with? e)
+        (eval-under-env (with-e2 e) (cons (cons (with-s e)(with-e1 e)) env))]
+
+       ;;[(apply? e)
+       ;; ((let ([v1 (eval-under-env (apply-e1 e) env)]
+       ;;        [v2 (eval-under-env (apply-e2 e) env)])
+       ;;   (if (closure? v1)
+       ;;        (eval-under-env (closure-f v1)())
+       ;;        (error "NUMUX apply applied to non-closure"))
+       ;;      ))]
+        
+       ;;
+       ;; Conditions 
+       ;;
+        
        [(cnd? e)
         (let ([v1 (eval-under-env (cnd-e1 e) env)])
               (if (bool? v1)
