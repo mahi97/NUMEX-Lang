@@ -77,6 +77,51 @@
          (envlookup env (var-string e))]
 
         ;;
+        ;; Conditions 
+        ;;
+       [(cnd? e)
+        (let ([v1 (eval-under-env (cnd-e1 e) env)])
+              (if (bool? v1)
+                  (if (bool-bit v1)
+                      (eval-under-env (cnd-e2))
+                      (eval-under-env (cnd-e3))
+                      )
+                  (error "NUMUX cnd guard applied to non-boolean"))
+              )]
+
+       [(iseq? e)
+        (let ([v1 (eval-under-env (iseq-e1 e) env)]
+              [v2 (eval-under-env (iseq-e2 e) env)])
+              (cond
+                [(and (num? v1)(num? v2))
+                 (eq? (num-int v1) (num-int v2))]
+                [(and (bool? v1)(bool? v2))
+                 (eq? (bool-bit v1)(bool-bit v2))]
+                [#t (error "NUMUX iseq applied to diffrent types or non-number nor boolean")]
+         ))]
+
+       [(ifnzero? e)
+        (let ([v1 (eval-under-env (ifnzero-e1 e) env)])
+              (if (num? v1)
+                  (if (eq? (num-int v1 0))
+                      (eval-under-env (ifnzero-e3 e) env)
+                      (eval-under-env (ifnzero-e2 e) env))
+                  (error "NUMUX ifnzero applied to a non-number")
+              ))]
+
+       [(ifleq? e)
+        (let ([v1 (eval-under-env (ifleq-e1 e) env)]
+              [v2 (eval-under-env (ifleq-e2 e) env)])
+              (if (and
+                   (num? v2)
+                   (num? v1))
+                  (if (<= (num-int v1)(num-int v2))
+                      (eval-under-env (ifleq-e3 e))
+                      (eval-under-env (ifleq-e4 e)))
+                  (error "NUMUX ifnzero applied to a non-number")
+              ))]
+       
+        ;;
         ;; Logical Operations
         ;;
         
@@ -144,7 +189,7 @@
            (if (num? v1)
                (num (- (num-int v1)))
                (if (bool? v1)
-                   (if v1 #f #t)
+                   (bool (if v1 #f #t))
                    (error "NUMEX Nagation applied to non-number or non-boolean"))
                ))]
         [(num? e)
