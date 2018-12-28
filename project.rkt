@@ -73,8 +73,38 @@
 ;; We will test eval-under-env by calling it directly even though
 ;; "in real life" it would be a helper function of eval-exp.
 (define (eval-under-env e env)
-  (cond [(var? e)
+  (cond [(var? e)  ;; Variables
          (envlookup env (var-string e))]
+
+        ;;
+        ;; Logical Operations
+        ;;
+        
+        [(andalso? e) 
+         (let ([v1 (eval-under-env (andalso-e1 e) env)]
+               [v2 (eval-under-env (andalso-e2 e) env)])
+           (if (and (bool? v1)
+                    (bool? v2))
+               (bool (if (eq? (bool-bit v1) #f)
+                         (#f)
+                         (bool-bit v2)))
+               (error "NUMUX and-also applied to non-boolean")
+           ))]
+        [(orelse? e)
+         (let ([v1 (eval-under-env (orelse-e1 e) env)]
+               [v2 (eval-under-env (orelse-e2 e) env)])
+           (if (and (bool? v1)
+                    (bool? v2))
+               (bool (if (eq? (bool-bit v1) #t)
+                         (#t)
+                         (bool-bit v2)))
+               (error "NUMUX or-else applied to non-boolean")
+           ))]
+
+        ;;
+        ;; Arithmetic Operations
+        ;;
+
         [(plus? e) 
          (let ([v1 (eval-under-env (plus-e1 e) env)]
                [v2 (eval-under-env (plus-e2 e) env)])
@@ -113,7 +143,10 @@
          (let ([v1 (eval-under-env (neg-e1 e) env)])
            (if (num? v1)
                (num (- (num-int v1)))
-               (error "NUMEX Nagation applied to non-number")))]
+               (if (bool? v1)
+                   (if v1 #f #t)
+                   (error "NUMEX Nagation applied to non-number or non-boolean"))
+               ))]
         [(num? e)
          (num (eval-under-env (num-int e) env))]
         [(bool? e)
