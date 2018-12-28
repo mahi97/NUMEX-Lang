@@ -1,6 +1,7 @@
 ;; PL Project - Fall 2018
 ;; NUMEX interpreter
-
+;; Mohammad Mahdi Rahimi (https://github.com/mahi97)
+;; Email: Mohammadmahdi76@gmail.com
 #lang racket
 (provide (all-defined-out)) ;; so we can put tests in a second file
 
@@ -8,14 +9,31 @@
 
 ;; CHANGE add the missing ones
 
-(struct var  (string) #:transparent)  ;; a variable, e.g., (var "foo")
-(struct num  (int)    #:transparent)  ;; a constant number, e.g., (num 17)
-(struct plus  (e1 e2)  #:transparent)  ;; add two expressions
+(struct var   (string)  #:transparent)   ;; a variable, e.g., (var "foo")
+(struct num   (int)     #:transparent)   ;; a constant number, e.g., (num 17)
+(struct bool  (bit) #:transparent)   ;; a boolean, e.g., (bool false)
 
+(struct plus  (e1 e2)   #:transparent)   ;; add two expressions
+(struct minus (e1 e2)   #:transparent)   ;; minus two expressions
+(struct mult  (e1 e2)   #:transparent)   ;; multiple two expressions
+(struct div   (e1 e2)   #:transparent)   ;; divide two expressions
+(struct neg   (e1)      #:transparent)   ;; negation of an expression
+
+(struct andalso (e1 e2) #:transparent)   ;; logical conjunction
+(struct orelse  (e1 e2) #:transparent)   ;; logical disjunction
+
+(struct cnd  (e1 e2 e3) #:transparent)   ;; conditions
+(struct iseq  (e1 e2)   #:transparent)   ;; add two expressions
+(struct ifnzero  (e1 e2 e3)   #:transparent)   ;; add two expressions
+(struct ifleq  (e1 e2 e3 e4)   #:transparent)   ;; add two expressions
+
+(struct with  (s e1 e2)   #:transparent)   ;; add two expressions
+(struct apair  (e1 e2)   #:transparent)   ;; add two expressions
+(struct 1st  (e1)   #:transparent)   ;; add two expressions
+(struct 2nd  (e1)   #:transparent)   ;; add two expressions
 
 (struct lam  (nameopt formal body) #:transparent) ;; a recursive(?) 1-argument function
 (struct apply (funexp actual)       #:transparent) ;; function application
-
 
 (struct munit   ()      #:transparent) ;; unit value -- good for ending a list
 (struct ismunit (e)     #:transparent) ;; if e1 is unit then true else false
@@ -25,8 +43,21 @@
 
 ;; Problem 1
 
-(define (racketlist->numexlist xs) "CHANGE")
-(define (numexlist->racketlist xs) "CHANGE")
+(define (racketlist->numexlist xs) (cond [(eq? xs null) (munit)]
+                                         [(number? xs) (num xs)]
+                                         [(string? xs) (var xs)]
+                                         [(boolean? xs) (bool xs)]
+                                         [#t (apair (racketlist->numexlist (car xs))
+                                                   (racketlist->numexlist (cdr xs)))]
+                                         ))
+(define (numexlist->racketlist xs) (cond [(munit? xs) null]
+                                         [(num? xs) (num-int xs)]
+                                         [(var? xs) (var-string xs)]
+                                         [(bool? xs) (bool-bit xs)]
+                                         [#t (cons (numexlist->racketlist (apair-e1 xs))
+                                                   (numexlist->racketlist (apair-e2 xs))
+                                                   )]
+                                    ))
 
 ;; Problem 2
 
