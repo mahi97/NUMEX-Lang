@@ -2,6 +2,7 @@
 ;; NUMEX interpreter
 ;; Mohammad Mahdi Rahimi (https://github.com/mahi97)
 ;; Email: Mohammadmahdi76@gmail.com
+
 #lang racket
 (provide (all-defined-out)) ;; so we can put tests in a second file
 
@@ -11,7 +12,7 @@
 
 (struct var   (string)  #:transparent)   ;; a variable, e.g., (var "foo")
 (struct num   (int)     #:transparent)   ;; a constant number, e.g., (num 17)
-(struct bool  (bit) #:transparent)   ;; a boolean, e.g., (bool false)
+(struct bool  (bit) #:transparent)       ;; a boolean, e.g., (bool false)
 
 (struct plus  (e1 e2)   #:transparent)   ;; add two expressions
 (struct minus (e1 e2)   #:transparent)   ;; minus two expressions
