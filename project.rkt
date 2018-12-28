@@ -1,7 +1,5 @@
 ;; PL Project - Fall 2018
 ;; NUMEX interpreter
-;; Mohammad Mahdi Rahimi (https://github.com/mahi97)
-;; Email: Mohammadmahdi76@gmail.com
 
 #lang racket
 (provide (all-defined-out)) ;; so we can put tests in a second file
@@ -12,7 +10,7 @@
 
 (struct var   (string)  #:transparent)   ;; a variable, e.g., (var "foo")
 (struct num   (int)     #:transparent)   ;; a constant number, e.g., (num 17)
-(struct bool  (bit) #:transparent)       ;; a boolean, e.g., (bool false)
+(struct bool  (bit) #:transparent)   ;; a boolean, e.g., (bool false)
 
 (struct plus  (e1 e2)   #:transparent)   ;; add two expressions
 (struct minus (e1 e2)   #:transparent)   ;; minus two expressions
@@ -66,15 +64,16 @@
 ;; Complete this function
 (define (envlookup env str)
   (cond [(null? env) (error "unbound variable during evaluation" str)]
-  		"CHANGE" 
-		)
+    [(eq? str (car (car env))) (cdr (car env))]
+        [#t (envlookup (cdr env) str)]
+    )
  )
 
 ;; Complete more cases for other kinds of NUMEX expressions.
 ;; We will test eval-under-env by calling it directly even though
 ;; "in real life" it would be a helper function of eval-exp.
 (define (eval-under-env e env)
-  (cond [(var? e) 
+  (cond [(var? e)
          (envlookup env (var-string e))]
         [(plus? e) 
          (let ([v1 (eval-under-env (plus-e1 e) env)]
@@ -84,7 +83,44 @@
                (num (+ (num-int v1) 
                        (num-int v2)))
                (error "NUMEX addition applied to non-number")))]
-        ;; CHANGE add more cases here
+        [(minus? e) 
+         (let ([v1 (eval-under-env (minus-e1 e) env)]
+               [v2 (eval-under-env (minus-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (num (- (num-int v1) 
+                       (num-int v2)))
+               (error "NUMEX subtraction applied to non-number")))]
+        [(mult? e) 
+         (let ([v1 (eval-under-env (mult-e1 e) env)]
+               [v2 (eval-under-env (mult-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (num (* (num-int v1) 
+                       (num-int v2)))
+               (error "NUMEX multiply applied to non-number")))]
+        [(div? e) 
+         (let ([v1 (eval-under-env (div-e1 e) env)]
+               [v2 (eval-under-env (div-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (if (eq? v2 0)
+                   (error "NUMEX division applied to Zero")
+                   (num (/ (num-int v1) 
+                       (num-int v2))))
+               (error "NUMEX division applied to non-number")))]
+        [(neg e) 
+         (let ([v1 (eval-under-env (neg-e1 e) env)])
+           (if (num? v1)
+               (num (- (num-int v1)))
+               (error "NUMEX Nagation applied to non-number")))]
+        [(num? e)
+         (num (eval-under-env (num-int e) env))]
+        [(bool? e)
+         (bool (eval-under-env (bool-bit e) env))]
+        [(closure? e) e] ;; TODO FIX
+        [(number? e)  e]
+        [(boolean? e) e]
         [#t (error (format "bad NUMEX expression: ~v" e))]))
 
 ;; Do NOT change
