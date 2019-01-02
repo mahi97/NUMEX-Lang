@@ -162,7 +162,7 @@
                   (if (<= (num-int v1)(num-int v2))
                       (eval-under-env (ifleq-e3 e) env)
                       (eval-under-env (ifleq-e4 e) env))
-                  (error "NUMUX ifnzero applied to a non-number")
+                  (error "NUMUX ifleq applied to a non-number")
               ))]
 
        [(ismunit? e)
@@ -266,8 +266,10 @@
       (with (car (car bs)) (cdr (car bs)) (with* (cdr bs) e2))))
 
 (define (ifneq e1 e2 e3 e4)
-  (ifleq e1 e2 (ifleq e2 e1 e4 e3) e3)
+  (with* (cons (cons "_x" e1) (cons (cons "_y" e2) null))
+           (ifleq (var "_x") (var "_y") (ifleq (var "_y") (var "_x") e4 e3) e3))
   )
+
 
 ;; Problem 4
 
