@@ -82,9 +82,9 @@
        ;; Other 
        ;;
 
-       [(func? e)
-        (eval-under-env () env)
-         )]
+;;       [(func? e)
+;;       (eval-under-env () env)
+;;         )]
         
        [(with? e)
         (eval-under-env (with-e2 e) (cons (cons (with-s e)(with-e1 e)) env))]
@@ -96,11 +96,33 @@
        ;;        (eval-under-env (closure-f v1)())
        ;;        (error "NUMUX apply applied to non-closure"))
        ;;      ))]
-        
+
+       ;;
+       ;; Pairs 
+       ;;
+
+       [(apair? e)
+        (let ([v1 (eval-under-env (apair-e1 e) env)]
+              [v2 (eval-under-env (apair-e2 e) env)])
+              ((apair v1 v2)))]
+
+       [(1st? e)
+        (let ([v1 (eval-under-env (1st-e1 e) env)])
+          (if (apair? v1)
+              (apair-e1 v1)
+              (error "NUMUX 1st applied to non-apair")))]
+
+       [(2nd? e)
+        (let ([v1 (eval-under-env (2nd-e1 e) env)])
+          (if (apair? v1)
+              (apair-e2 v1)
+              (error "NUMUX 1st applied to non-apair")))]
+
        ;;
        ;; Conditions 
        ;;
-        
+
+
        [(cnd? e)
         (let ([v1 (eval-under-env (cnd-e1 e) env)])
               (if (bool? v1)
@@ -142,7 +164,12 @@
                       (eval-under-env (ifleq-e4 e)))
                   (error "NUMUX ifnzero applied to a non-number")
               ))]
-       
+
+       [(ismunit? e)
+        (let ([v1 (eval-under-env (ismunit-e e) env)])
+              (bool (munit? v1))
+         )]
+
         ;;
         ;; Logical Operations
         ;;
