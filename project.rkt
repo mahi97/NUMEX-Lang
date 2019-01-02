@@ -160,8 +160,8 @@
                    (num? v2)
                    (num? v1))
                   (if (<= (num-int v1)(num-int v2))
-                      (eval-under-env (ifleq-e3 e))
-                      (eval-under-env (ifleq-e4 e)))
+                      (eval-under-env (ifleq-e3 e) env)
+                      (eval-under-env (ifleq-e4 e) env))
                   (error "NUMUX ifnzero applied to a non-number")
               ))]
 
@@ -233,7 +233,7 @@
                    (num (/ (num-int v1) 
                        (num-int v2))))
                (error "NUMEX division applied to non-number")))]
-        [(neg e) 
+        [(neg? e) 
          (let ([v1 (eval-under-env (neg-e1 e) env)])
            (if (num? v1)
                (num (- (num-int v1)))
@@ -256,11 +256,18 @@
         
 ;; Problem 3
 
-(define (ifmunit e1 e2 e3) "CHANGE")
+(define (ifmunit e1 e2 e3)
+  (cnd (ismunit e1) e2 e3)
+  )
 
-(define (with* bs e2) "CHANGE")
+(define (with* bs e2)
+  (if (null? bs)
+      e2
+      (with (car (car bs)) (cdr (car bs)) (with* (cdr bs) e2))))
 
-(define (ifneq e1 e2 e3 e4) "CHANGE")
+(define (ifneq e1 e2 e3 e4)
+  (ifleq e1 e2 (ifleq e2 e1 e4 e3) e3)
+  )
 
 ;; Problem 4
 
