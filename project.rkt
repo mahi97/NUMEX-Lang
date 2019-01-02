@@ -37,7 +37,7 @@
 (struct munit   ()      #:transparent) ;; unit value -- good for ending a list
 (struct ismunit (e)     #:transparent) ;; if e1 is unit then true else false
 
-(struct func (n b) #:transparent)
+(struct func (n args b) #:transparent)
 
 ;; a closure is not in "source" programs; it is what functions evaluate to
 (struct closure (env f) #:transparent) 
@@ -82,21 +82,21 @@
        ;; Other 
        ;;
 
-;;       [(func? e)
-;;       (eval-under-env () env)
-;;         )]
+       [(func? e)
+        (closure env e)
+         ]
         
        [(with? e)
         (eval-under-env (with-e2 e) (cons (cons (with-s e)(with-e1 e)) env))]
 
-       ;;[(apply? e)
-       ;; ((let ([v1 (eval-under-env (apply-e1 e) env)]
-       ;;        [v2 (eval-under-env (apply-e2 e) env)])
-       ;;   (if (closure? v1)
-       ;;        (eval-under-env (closure-f v1)())
-       ;;        (error "NUMUX apply applied to non-closure"))
-       ;;      ))]
-
+       [(apply? e)
+        ((let ([v1 (eval-under-env (apply-funexp e) env)]
+               [v2 (eval-under-env (apply-actual e) env)])
+          (if (closure? v1)
+               (eval-under-env (func-b (closure-f v1)) (cons (cons (func-n (closure-f v1)) v1) (cons (cons (func-args (closure-f v1)) v2) env)))
+               (error "NUMUX apply applied to non-closure"))
+             ))]
+       
        ;;
        ;; Pairs 
        ;;
@@ -273,11 +273,19 @@
 
 ;; Problem 4
 
-(define numex-filter "CHANGE")
+(define (islist l) (cond [(munit? l) #t]
+                         [(and (apair? l) (islist (2nd l))) #t]
+                         [#t #f]))
 
-(define numex-all-gt
-  (with "filter" numex-filter
-        "CHANGE (notice filter is now in NUMEX scope)"))
+;;(define numex-filter (func "_map" _func (
+;;                                       func "_map_" _list (if (islist _list)
+;;                                                            (apair (apply _func (1st _list)) (_map_ (2nd _list)))
+;;                                                           (error "NUMEX filter applied to non-list")
+;;                                                            )))) 
+
+;;(define numex-all-gt
+;;  (with "filter" numex-filter
+;;        "CHANGE (notice filter is now in NUMEX scope)"))
 
 ;; Challenge Problem
 
