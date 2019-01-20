@@ -83,18 +83,21 @@
        ;;
 
        [(func? e)
+        (if (and (or (string? (func-n e)) (null? (func-n e))) (string? (func-args e)))
         (closure env e)
-         ]
+        (error "NUMEX function name and parameter name must be string"))]
         
        [(with? e)
         (eval-under-env (with-e2 e) (cons (cons (with-s e)(with-e1 e)) env))]
 
        [(apply? e)
-        ((let ([v1 (eval-under-env (apply-funexp e) env)]
+        (let ([v1 (eval-under-env (apply-funexp e) env)]
                [v2 (eval-under-env (apply-actual e) env)])
           (if (closure? v1)
-               (eval-under-env (func-b (closure-f v1)) (cons (cons (func-n (closure-f v1)) v1) (cons (cons (func-args (closure-f v1)) v2) env)))
-               (error "NUMUX apply applied to non-closure"))
+              (if (null? (func-n (closure-f v1)))
+               (eval-under-env (func-b (closure-f v1)) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))
+               (eval-under-env (func-b (closure-f v1)) (cons (cons (func-n (closure-f v1)) v1) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))))
+              (error  "NUMUX apply applied to non-closure")
              ))]
        
        ;;
@@ -248,6 +251,7 @@
         [(closure? e) e] ;; TODO FIX
         [(number? e)  e]
         [(boolean? e) e]
+        [(munit? e) e]
         [#t (error (format "bad NUMEX expression: ~v" e))]))
 
 ;; Do NOT change
@@ -273,12 +277,26 @@
 
 ;; Problem 4
 
-(define (islist l) (cond [(munit? l) #t]
-                         [(and (apair? l) (islist (2nd l))) #t]
+(define (islist l) (cond [(and (apair? l) (islist (2nd l))) #t]
+                         [(ismunit l) #t]
                          [#t #f]))
 
-;;(define numex-filter (func "_map" _func (
-;;                                       func "_map_" _list (if (islist _list)
+(define (map f l) (cond [(and (func? f)(islist l))
+                         (apair (apply f (1st l))(map f (2nd l)))
+                         ]
+                        [#t (error "type of argument of map function is not right")]))
+
+(define (numex-filter f) (cond [(func? f)
+                                (func null "xs" 
+                                      (if (islist "xs")
+                                           (map f "xs")
+                                           (error "NUMEX filter applied to non-list"))
+                                       )]
+                               [#t (error "numex-filter applied to non NUMEX function types")]
+                          ))
+
+;;(define numex-filter (func "_map" "_func" (
+;;                                      func "_map_" _list (if (islist _list)
 ;;                                                            (apair (apply _func (1st _list)) (_map_ (2nd _list)))
 ;;                                                           (error "NUMEX filter applied to non-list")
 ;;                                                            )))) 
