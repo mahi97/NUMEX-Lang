@@ -107,7 +107,7 @@
        [(apair? e)
         (let ([v1 (eval-under-env (apair-e1 e) env)]
               [v2 (eval-under-env (apair-e2 e) env)])
-              ((apair v1 v2)))]
+              (apair v1 v2))]
 
        [(1st? e)
         (let ([v1 (eval-under-env (1st-e1 e) env)])
@@ -130,8 +130,8 @@
         (let ([v1 (eval-under-env (cnd-e1 e) env)])
               (if (bool? v1)
                   (if (bool-bit v1)
-                      (eval-under-env (cnd-e2))
-                      (eval-under-env (cnd-e3))
+                      (eval-under-env (cnd-e2 e) env)
+                      (eval-under-env (cnd-e3 e) env)
                       )
                   (error "NUMUX cnd guard applied to non-boolean"))
               )]
@@ -248,7 +248,7 @@
          (num (eval-under-env (num-int e) env))]
         [(bool? e)
          (bool (eval-under-env (bool-bit e) env))]
-        [(closure? e) e] ;; TODO FIX
+        [(closure? e) e]
         [(number? e)  e]
         [(boolean? e) e]
         [(munit? e) e]
@@ -277,23 +277,15 @@
 
 ;; Problem 4
 
-(define (islist l) (cond [(and (apair? l) (islist (2nd l))) #t]
-                         [(ismunit l) #t]
-                         [#t #f]))
-
-(define (map f l) (cond [(and (func? f)(islist l))
-                         (apair (apply f (1st l))(map f (2nd l)))
-                         ]
-                        [#t (error "type of argument of map function is not right")]))
-
-(define (numex-filter f) (cond [(func? f)
-                                (func null "xs" 
-                                      (if (islist "xs")
-                                           (map f "xs")
-                                           (error "NUMEX filter applied to non-list"))
-                                       )]
-                               [#t (error "numex-filter applied to non NUMEX function types")]
-                          ))
+(define numex-filter (func null "f"
+                           (
+                            func "map" "list"
+                                (ifmunit (var "list")
+                                         (munit)
+                                         (apair (apply (var "f") (1st (var "list"))) (apply (var "map") (2nd (var "list")))))
+                           )
+                     )
+  )
 
 ;;(define numex-filter (func "_map" "_func" (
 ;;                                      func "_map_" _list (if (islist _list)
