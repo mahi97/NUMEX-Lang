@@ -88,16 +88,16 @@
         (error "NUMEX function name and parameter name must be string"))]
         
        [(with? e)
-        (eval-under-env (with-e2 e) (cons (cons (with-s e)(with-e1 e)) env))]
+        (eval-under-env (with-e2 e) (cons (cons (with-s e)(eval-under-env (with-e1 e) env)) env))]
 
        [(apply? e)
         (let ([v1 (eval-under-env (apply-funexp e) env)]
                [v2 (eval-under-env (apply-actual e) env)])
           (if (closure? v1)
               (if (null? (func-n (closure-f v1)))
-               (eval-under-env (func-b (closure-f v1)) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))
-               (eval-under-env (func-b (closure-f v1)) (cons (cons (func-n (closure-f v1)) v1) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))))
-              (error  "NUMUX apply applied to non-closure")
+                  (eval-under-env (func-b (closure-f v1)) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))
+                  (eval-under-env (func-b (closure-f v1)) (cons (cons (func-n (closure-f v1)) v1) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))))
+              (error  "NUMUX apply applied to non-closure" v1 (apply-funexp e))
              ))]
        
        ;;
@@ -287,15 +287,27 @@
                      )
   )
 
-;;(define numex-filter (func "_map" "_func" (
-;;                                      func "_map_" _list (if (islist _list)
-;;                                                            (apair (apply _func (1st _list)) (_map_ (2nd _list)))
-;;                                                           (error "NUMEX filter applied to non-list")
-;;                                                            )))) 
-
-;;(define numex-all-gt
-;;  (with "filter" numex-filter
-;;        "CHANGE (notice filter is now in NUMEX scope)"))
+(define numex-all-gt
+  (with "filter" numex-filter
+        (func null "i"
+              (func null "list"
+                    (apply
+                     (apply (var "filter")
+                            (func "gt" "num"
+                                  (ifleq (var "num") (var "i")
+                                         (munit) ;; Whatever
+                                         (var "num")
+                                         )
+                                  )
+                            )
+                     (var "list")
+                     )
+                  
+                 )
+              )
+        )
+  )
+  
 
 ;; Challenge Problem
 
