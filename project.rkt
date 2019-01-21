@@ -316,15 +316,64 @@
 ;; We will test this function directly, so it must do
 ;; as described in the assignment
 (define (compute-free-vars e)
-  (cond [(func? e)
-         (fun-challenge (func-n e) (func-args e) (compute-free-vars (func-b e)) (cfv e))]
-        [(num? e) e]
-        [#t error "NANI?"]))
+  (cond[(var? e)  ;; Variables
+        (set (var-string e))]
+
+       ;;
+       ;; Other 
+       ;;
+
+       [(func? e) (fun-challenge (func-n e) (func-args e) (compute-free-vars (func-b e)) (cfv e))]
+       [(with? e) (with (with-s e) (compute-free-vars (with-e1 e)) (compute-free-vars (with-e2 e)))]
+       [(apply? e) (apply (compute-free-vars apply-funexp) (compute-free-vars apply-actual))]
+
+       ;;
+       ;; Pairs 
+       ;;
+
+       [(apair? e) (apair (compute-free-vars (apair-e1 e)) (compute-free-vars (apair-e2 e)))]
+       [(1st? e) (1st (compute-free-vars (1st-e1 e)))]
+       [(2nd? e) (2nd (compute-free-vars (2nd-e1 e)))]
+
+       ;;
+       ;; Conditions 
+       ;;
+
+       [(cnd? e) (cnd (compute-free-vars (cnd-e1 e)) (compute-free-vars (cnd-e2 e)) (compute-free-vars (cnd-e3 e)))]
+       [(iseq? e) (iseq (compute-free-vars iseq-e1) (compute-free-vars iseq-e2))]
+       [(ifnzero? e) (ifnzero (compute-free-vars ifnzero-e1 e) (compute-free-vars ifnzero-e2 e) (compute-free-vars ifnzero-e3 e))]
+       [(ifleq? e) (ifleq (compute-free-vars (ifleq-e1 e)) (compute-free-vars (ifleq-e2 e)) (compute-free-vars (ifleq-e3 e)) (compute-free-vars (ifleq-e4 e)))]
+       [(ismunit? e) (ismunit (compute-free-vars (ismunit-e e)))]
+
+       ;;
+       ;; Logical Operations
+       ;;
+        
+       [(andalso? e) (andalso (compute-free-vars (andalso-e1 e)) (compute-free-vars (andalso-e2 e)))]
+       [(orelse? e) (orelse (compute-free-vars (orelse-e1 e)) (compute-free-vars (orelse-e2 e)))]
+
+       ;;
+       ;; Arithmetic Operations
+       ;;
+
+       [(plus? e) (plus (compute-free-vars (plus-e1 e)) (compute-free-vars (plus-e2 e)))]
+       [(minus? e) (minus (compute-free-vars (minus-e1 e)) (compute-free-vars (minus-e2 e)))]
+       [(mult? e) (mult (compute-free-vars (mult-e1 e)) (compute-free-vars (mult-e2 e)))]
+       [(div? e) (div (compute-free-vars (div-e1 e)) (compute-free-vars (div-e2 e)))]
+       [(neg? e) (neg (compute-free-vars (neg-e1 e)))]
+       [(num? e) e]
+       [(bool? e) e]
+       [(closure? e) e]
+       [(munit? e) e]
+       
+       [#t (error "WHE?")]
+       
+       )
+  )
+    
 
 (define (cfv e)
-  (cond[(num? e) (set)]
-       [(bool? e) (set)]
-       [(var? e)  ;; Variables
+  (cond[(var? e)  ;; Variables
         (set (var-string e))]
 
        ;;
@@ -358,72 +407,22 @@
        ;;
         
        [(andalso? e) (set-union (andalso-e1 e) (andalso-e2 e))]
-       [(orelse? e) 
-         (let ([v1 (eval-under-env (orelse-e1 e) env)]
-               [v2 (eval-under-env (orelse-e2 e) env)])
-           (if (and (bool? v1)
-                    (bool? v2))
-               (bool (if (eq? (bool-bit v1) #t)
-                         (#t)
-                         (bool-bit v2)))
-               (error "NUMUX or-else applied to non-boolean")
-           ))]
+       [(orelse? e) (set-union (orelse-e1 e) (orelse-e2 e))]
 
-        ;;
-        ;; Arithmetic Operations
-        ;;
+       ;;
+       ;; Arithmetic Operations
+       ;;
 
-        [(plus? e) 
-         (let ([v1 (eval-under-env (plus-e1 e) env)]
-               [v2 (eval-under-env (plus-e2 e) env)])
-           (if (and (num? v1)
-                    (num? v2))
-               (num (+ (num-int v1) 
-                       (num-int v2)))
-               (error "NUMEX addition applied to non-number")))]
-        [(minus? e) 
-         (let ([v1 (eval-under-env (minus-e1 e) env)]
-               [v2 (eval-under-env (minus-e2 e) env)])
-           (if (and (num? v1)
-                    (num? v2))
-               (num (- (num-int v1) 
-                       (num-int v2)))
-               (error "NUMEX subtraction applied to non-number")))]
-        [(mult? e) 
-         (let ([v1 (eval-under-env (mult-e1 e) env)]
-               [v2 (eval-under-env (mult-e2 e) env)])
-           (if (and (num? v1)
-                    (num? v2))
-               (num (* (num-int v1) 
-                       (num-int v2)))
-               (error "NUMEX multiply applied to non-number")))]
-        [(div? e) 
-         (let ([v1 (eval-under-env (div-e1 e) env)]
-               [v2 (eval-under-env (div-e2 e) env)])
-           (if (and (num? v1)
-                    (num? v2))
-               (if (eq? v2 0)
-                   (error "NUMEX division applied to Zero")
-                   (num (/ (num-int v1) 
-                       (num-int v2))))
-               (error "NUMEX division applied to non-number")))]
-        [(neg? e) 
-         (let ([v1 (eval-under-env (neg-e1 e) env)])
-           (if (num? v1)
-               (num (- (num-int v1)))
-               (if (bool? v1)
-                   (bool (if v1 #f #t))
-                   (error "NUMEX Nagation applied to non-number or non-boolean"))
-               ))]
-        [(num? e)
-         (num (eval-under-env (num-int e) env))]
-        [(bool? e)
-         (bool (eval-under-env (bool-bit e) env))]
-        [(closure? e) e]
-        [(number? e)  e]
-        [(boolean? e) e]
-        [(munit? e) e]
-        [#t (error (format "bad NUMEX expression: ~v" e))]
+       [(plus? e) (set-union (cfv (plus-e1 e)) (cfv (plus-e2 e)))]
+       [(minus? e) (set-union (cfv (minus-e1 e)) (cfv (minus-e2 e)))]
+       [(mult? e) (set-union (cfv (mult-e1 e)) (cfv (mult-e2 e)))]
+       [(div? e) (set-union (cfv (div-e1 e)) (cfv (div-e2 e)))]
+       [(neg? e) (cfv (neg-e1 e))]
+       [(num? e) (set)]
+       [(bool? e) (set)]
+       [(closure? e) (set)]
+       [(munit? e) (set)]
+       [#t (error (format "bad NUMEX expression: ~v" e))]
        )
   )
 
