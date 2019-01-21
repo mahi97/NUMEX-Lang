@@ -316,8 +316,7 @@
 ;; We will test this function directly, so it must do
 ;; as described in the assignment
 (define (compute-free-vars e)
-  (cond[(var? e)  ;; Variables
-        (set (var-string e))]
+  (cond[(var? e) e]
 
        ;;
        ;; Other 
@@ -325,7 +324,7 @@
 
        [(func? e) (fun-challenge (func-n e) (func-args e) (compute-free-vars (func-b e)) (cfv e))]
        [(with? e) (with (with-s e) (compute-free-vars (with-e1 e)) (compute-free-vars (with-e2 e)))]
-       [(apply? e) (apply (compute-free-vars apply-funexp) (compute-free-vars apply-actual))]
+       [(apply? e) (apply (compute-free-vars (apply-funexp e)) (compute-free-vars (apply-actual e)))]
 
        ;;
        ;; Pairs 
@@ -366,7 +365,7 @@
        [(closure? e) e]
        [(munit? e) e]
        
-       [#t (error "WHE?")]
+       [#t (error "WHE?" e)]
        
        )
   )
@@ -380,7 +379,7 @@
        ;; Other 
        ;;
 
-       [(func? e) (set-remove (set-remove (cfv func-b) func-n) func-args)]     
+       [(func? e) (set-remove (set-remove (cfv (func-b e)) (func-n e)) (func-args e))]     
        [(with? e) (set-union (set-remove (cfv (with-e2 e)) (with-s e)) (cfv (with-e1 e)) )]
        [(apply? e) (set-union (cfv (apply-funexp e))(cfv (apply-actual e)))]
        
@@ -586,7 +585,7 @@
                     (num? v2))
                (num (* (num-int v1) 
                        (num-int v2)))
-               (error "NUMEX multiply applied to non-number")))]
+               (error "NUMEX multiply applied to non-number" e)))]
         [(div? e) 
          (let ([v1 (eval-under-env-c (div-e1 e) env)]
                [v2 (eval-under-env-c (div-e2 e) env)])
