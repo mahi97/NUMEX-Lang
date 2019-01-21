@@ -3,7 +3,7 @@
 
 #lang racket
 (provide (all-defined-out)) ;; so we can put tests in a second file
-
+(require racket/set)
 ;; definition of structures for NUMEX programs
 
 ;; CHANGE add the missing ones
@@ -315,11 +315,299 @@
 
 ;; We will test this function directly, so it must do
 ;; as described in the assignment
-(define (compute-free-vars e) "CHANGE")
+(define (compute-free-vars e)
+  (cond [(func? e)
+         (fun-challenge (func-n e) (func-args e) (compute-free-vars (func-b e)) (cfv e))]
+        [(num? e) e]
+        [#t error "NANI?"]))
+
+(define (cfv e)
+  (cond[(num? e) (set)]
+       [(bool? e) (set)]
+       [(var? e)  ;; Variables
+        (set (var-string e))]
+
+       ;;
+       ;; Other 
+       ;;
+
+       [(func? e) (set-remove (set-remove (cfv func-b) func-n) func-args)]     
+       [(with? e) (set-union (set-remove (cfv (with-e2 e)) (with-s e)) (cfv (with-e1 e)) )]
+       [(apply? e) (set-union (cfv (apply-funexp e))(cfv (apply-actual e)))]
+       
+       ;;
+       ;; Pairs 
+       ;;
+
+       [(apair? e) (set-union (cfv (apair-e1 e)) (cfv (apair-e2 e)))]
+       [(1st? e) (cfv (1st-e1 e))]
+       [(2nd? e) (cfv (2nd-e1 e))]
+
+       ;;
+       ;; Conditions 
+       ;;
+
+       [(cnd? e) (set-union (cfv (cnd-e1 e)) (cfv (cnd-e2 e)) (cfv (cnd-e3 e)))]
+       [(iseq? e) (set-union (cfv iseq-e1) (cfv iseq-e2))]
+       [(ifnzero? e) (set-union (cfv ifnzero-e1 e) (cfv ifnzero-e2 e) (cfv ifnzero-e3 e))]
+       [(ifleq? e) (set-union (cfv (ifleq-e1 e)) (cfv (ifleq-e2 e)) (cfv (ifleq-e3 e)) (cfv (ifleq-e4 e)))]
+       [(ismunit? e) (cfv (ismunit-e e))]
+
+       ;;
+       ;; Logical Operations
+       ;;
+        
+       [(andalso? e) (set-union (andalso-e1 e) (andalso-e2 e))]
+       [(orelse? e) 
+         (let ([v1 (eval-under-env (orelse-e1 e) env)]
+               [v2 (eval-under-env (orelse-e2 e) env)])
+           (if (and (bool? v1)
+                    (bool? v2))
+               (bool (if (eq? (bool-bit v1) #t)
+                         (#t)
+                         (bool-bit v2)))
+               (error "NUMUX or-else applied to non-boolean")
+           ))]
+
+        ;;
+        ;; Arithmetic Operations
+        ;;
+
+        [(plus? e) 
+         (let ([v1 (eval-under-env (plus-e1 e) env)]
+               [v2 (eval-under-env (plus-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (num (+ (num-int v1) 
+                       (num-int v2)))
+               (error "NUMEX addition applied to non-number")))]
+        [(minus? e) 
+         (let ([v1 (eval-under-env (minus-e1 e) env)]
+               [v2 (eval-under-env (minus-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (num (- (num-int v1) 
+                       (num-int v2)))
+               (error "NUMEX subtraction applied to non-number")))]
+        [(mult? e) 
+         (let ([v1 (eval-under-env (mult-e1 e) env)]
+               [v2 (eval-under-env (mult-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (num (* (num-int v1) 
+                       (num-int v2)))
+               (error "NUMEX multiply applied to non-number")))]
+        [(div? e) 
+         (let ([v1 (eval-under-env (div-e1 e) env)]
+               [v2 (eval-under-env (div-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (if (eq? v2 0)
+                   (error "NUMEX division applied to Zero")
+                   (num (/ (num-int v1) 
+                       (num-int v2))))
+               (error "NUMEX division applied to non-number")))]
+        [(neg? e) 
+         (let ([v1 (eval-under-env (neg-e1 e) env)])
+           (if (num? v1)
+               (num (- (num-int v1)))
+               (if (bool? v1)
+                   (bool (if v1 #f #t))
+                   (error "NUMEX Nagation applied to non-number or non-boolean"))
+               ))]
+        [(num? e)
+         (num (eval-under-env (num-int e) env))]
+        [(bool? e)
+         (bool (eval-under-env (bool-bit e) env))]
+        [(closure? e) e]
+        [(number? e)  e]
+        [(boolean? e) e]
+        [(munit? e) e]
+        [#t (error (format "bad NUMEX expression: ~v" e))]
+       )
+  )
 
 ;; Do NOT share code with eval-under-env because that will make grading
 ;; more difficult, so copy most of your interpreter here and make minor changes
-(define (eval-under-env-c e env) "CHANGE")
+(define (eval-under-env-c e env)
+  (cond [(var? e)  ;; Variables
+         (envlookup env (var-string e))]
+
+       ;;
+       ;; Other 
+       ;;
+
+       [(fun-challenge? e)
+        (if (and (or (string? (fun-challenge-nameopt e)) (null? (fun-challenge-nameopt e))) (string? (fun-challenge-formal e)))
+        (closure env e)
+        (error "NUMEX function name and parameter name must be string"))]
+        
+       [(with? e)
+        (eval-under-env (with-e2 e) (cons (cons (with-s e)(eval-under-env (with-e1 e) env)) env))]
+
+       [(apply? e)
+        (let ([v1 (eval-under-env (apply-funexp e) env)]
+               [v2 (eval-under-env (apply-actual e) env)])
+          (if (closure? v1)
+              (if (null? (func-n (closure-f v1)))
+                  (eval-under-env (func-b (closure-f v1)) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))
+                  (eval-under-env (func-b (closure-f v1)) (cons (cons (func-n (closure-f v1)) v1) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))))
+              (error  "NUMUX apply applied to non-closure" v1 (apply-funexp e))
+             ))]
+       
+       ;;
+       ;; Pairs 
+       ;;
+
+       [(apair? e)
+        (let ([v1 (eval-under-env (apair-e1 e) env)]
+              [v2 (eval-under-env (apair-e2 e) env)])
+              (apair v1 v2))]
+
+       [(1st? e)
+        (let ([v1 (eval-under-env (1st-e1 e) env)])
+          (if (apair? v1)
+              (apair-e1 v1)
+              (error "NUMUX 1st applied to non-apair")))]
+
+       [(2nd? e)
+        (let ([v1 (eval-under-env (2nd-e1 e) env)])
+          (if (apair? v1)
+              (apair-e2 v1)
+              (error "NUMUX 1st applied to non-apair")))]
+
+       ;;
+       ;; Conditions 
+       ;;
+
+
+       [(cnd? e)
+        (let ([v1 (eval-under-env (cnd-e1 e) env)])
+              (if (bool? v1)
+                  (if (bool-bit v1)
+                      (eval-under-env (cnd-e2 e) env)
+                      (eval-under-env (cnd-e3 e) env)
+                      )
+                  (error "NUMUX cnd guard applied to non-boolean"))
+              )]
+
+       [(iseq? e)
+        (let ([v1 (eval-under-env (iseq-e1 e) env)]
+              [v2 (eval-under-env (iseq-e2 e) env)])
+              (cond
+                [(and (num? v1)(num? v2))
+                 (eq? (num-int v1) (num-int v2))]
+                [(and (bool? v1)(bool? v2))
+                 (eq? (bool-bit v1)(bool-bit v2))]
+                [#t (error "NUMUX iseq applied to diffrent types or non-number nor boolean")]
+         ))]
+
+       [(ifnzero? e)
+        (let ([v1 (eval-under-env (ifnzero-e1 e) env)])
+              (if (num? v1)
+                  (if (eq? (num-int v1 0))
+                      (eval-under-env (ifnzero-e3 e) env)
+                      (eval-under-env (ifnzero-e2 e) env))
+                  (error "NUMUX ifnzero applied to a non-number")
+              ))]
+
+       [(ifleq? e)
+        (let ([v1 (eval-under-env (ifleq-e1 e) env)]
+              [v2 (eval-under-env (ifleq-e2 e) env)])
+              (if (and
+                   (num? v2)
+                   (num? v1))
+                  (if (<= (num-int v1)(num-int v2))
+                      (eval-under-env (ifleq-e3 e) env)
+                      (eval-under-env (ifleq-e4 e) env))
+                  (error "NUMUX ifleq applied to a non-number")
+              ))]
+
+       [(ismunit? e)
+        (let ([v1 (eval-under-env (ismunit-e e) env)])
+              (bool (munit? v1))
+         )]
+
+        ;;
+        ;; Logical Operations
+        ;;
+        
+        [(andalso? e) 
+         (let ([v1 (eval-under-env (andalso-e1 e) env)]
+               [v2 (eval-under-env (andalso-e2 e) env)])
+           (if (and (bool? v1)
+                    (bool? v2))
+               (bool (if (eq? (bool-bit v1) #f)
+                         (#f)
+                         (bool-bit v2)))
+               (error "NUMUX and-also applied to non-boolean")
+           ))]
+        [(orelse? e)
+         (let ([v1 (eval-under-env (orelse-e1 e) env)]
+               [v2 (eval-under-env (orelse-e2 e) env)])
+           (if (and (bool? v1)
+                    (bool? v2))
+               (bool (if (eq? (bool-bit v1) #t)
+                         (#t)
+                         (bool-bit v2)))
+               (error "NUMUX or-else applied to non-boolean")
+           ))]
+
+        ;;
+        ;; Arithmetic Operations
+        ;;
+
+        [(plus? e) 
+         (let ([v1 (eval-under-env (plus-e1 e) env)]
+               [v2 (eval-under-env (plus-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (num (+ (num-int v1) 
+                       (num-int v2)))
+               (error "NUMEX addition applied to non-number")))]
+        [(minus? e) 
+         (let ([v1 (eval-under-env (minus-e1 e) env)]
+               [v2 (eval-under-env (minus-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (num (- (num-int v1) 
+                       (num-int v2)))
+               (error "NUMEX subtraction applied to non-number")))]
+        [(mult? e) 
+         (let ([v1 (eval-under-env (mult-e1 e) env)]
+               [v2 (eval-under-env (mult-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (num (* (num-int v1) 
+                       (num-int v2)))
+               (error "NUMEX multiply applied to non-number")))]
+        [(div? e) 
+         (let ([v1 (eval-under-env (div-e1 e) env)]
+               [v2 (eval-under-env (div-e2 e) env)])
+           (if (and (num? v1)
+                    (num? v2))
+               (if (eq? v2 0)
+                   (error "NUMEX division applied to Zero")
+                   (num (/ (num-int v1) 
+                       (num-int v2))))
+               (error "NUMEX division applied to non-number")))]
+        [(neg? e) 
+         (let ([v1 (eval-under-env (neg-e1 e) env)])
+           (if (num? v1)
+               (num (- (num-int v1)))
+               (if (bool? v1)
+                   (bool (if v1 #f #t))
+                   (error "NUMEX Nagation applied to non-number or non-boolean"))
+               ))]
+        [(num? e)
+         (num (eval-under-env (num-int e) env))]
+        [(bool? e)
+         (bool (eval-under-env (bool-bit e) env))]
+        [(closure? e) e]
+        [(number? e)  e]
+        [(boolean? e) e]
+        [(munit? e) e]
+        [#t (error (format "bad NUMEX expression: ~v" e))]))
 
 ;; Do NOT change this
 (define (eval-exp-c e)
