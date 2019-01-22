@@ -37,8 +37,6 @@
 (struct munit   ()      #:transparent) ;; unit value -- good for ending a list
 (struct ismunit (e)     #:transparent) ;; if e1 is unit then true else false
 
-(struct func (n args b) #:transparent)
-
 ;; a closure is not in "source" programs; it is what functions evaluate to
 (struct closure (env f) #:transparent) 
 
@@ -82,8 +80,8 @@
        ;; Other 
        ;;
 
-       [(func? e)
-        (if (and (or (string? (func-n e)) (null? (func-n e))) (string? (func-args e)))
+       [(lam? e)
+        (if (and (or (string? (lam-nameopt e)) (null? (lam-nameopt e))) (string? (lam-formal e)))
         (closure env e)
         (error "NUMEX function name and parameter name must be string"))]
         
@@ -94,9 +92,9 @@
         (let ([v1 (eval-under-env (apply-funexp e) env)]
                [v2 (eval-under-env (apply-actual e) env)])
           (if (closure? v1)
-              (if (null? (func-n (closure-f v1)))
-                  (eval-under-env (func-b (closure-f v1)) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))
-                  (eval-under-env (func-b (closure-f v1)) (cons (cons (func-n (closure-f v1)) v1) (cons (cons (func-args (closure-f v1)) v2) (closure-env v1)))))
+              (if (null? (lam-nameopt (closure-f v1)))
+                  (eval-under-env (lam-body (closure-f v1)) (cons (cons (lam-formal (closure-f v1)) v2) (closure-env v1)))
+                  (eval-under-env (lam-body (closure-f v1)) (cons (cons (lam-nameopt (closure-f v1)) v1) (cons (cons (lam-formal (closure-f v1)) v2) (closure-env v1)))))
               (error  "NUMUX apply applied to non-closure" v1 (apply-funexp e))
              ))]
        
@@ -277,9 +275,9 @@
 
 ;; Problem 4
 
-(define numex-filter (func null "f"
+(define numex-filter (lam null "f"
                            (
-                            func "map" "list"
+                            lam "map" "list"
                                 (ifmunit (var "list")
                                          (munit)
                                          (apair (apply (var "f") (1st (var "list"))) (apply (var "map") (2nd (var "list")))))
@@ -289,13 +287,13 @@
 
 (define numex-all-gt
   (with "filter" numex-filter
-        (func null "i"
-              (func null "list"
+        (lam null "i"
+              (lam null "list"
                     (apply
                      (apply (var "filter")
-                            (func "gt" "num"
+                            (lam "gt" "num"
                                   (ifleq (var "num") (var "i")
-                                         (munit) ;; Whatever
+                                         (num 0) ;; Whatever
                                          (var "num")
                                          )
                                   )
@@ -322,7 +320,7 @@
        ;; Other 
        ;;
 
-       [(func? e) (fun-challenge (func-n e) (func-args e) (compute-free-vars (func-b e)) (cfv e))]
+       [(lam? e) (fun-challenge (lam-nameopt e) (lam-formal e) (compute-free-vars (lam-body e)) (cfv e))]
        [(with? e) (with (with-s e) (compute-free-vars (with-e1 e)) (compute-free-vars (with-e2 e)))]
        [(apply? e) (apply (compute-free-vars (apply-funexp e)) (compute-free-vars (apply-actual e)))]
 
@@ -379,7 +377,7 @@
        ;; Other 
        ;;
 
-       [(func? e) (set-remove (set-remove (cfv (func-b e)) (func-n e)) (func-args e))]     
+       [(lam? e) (set-remove (set-remove (cfv (lam-body e)) (lam-nameopt e)) (lam-formal e))]     
        [(with? e) (set-union (set-remove (cfv (with-e2 e)) (with-s e)) (cfv (with-e1 e)) )]
        [(apply? e) (set-union (cfv (apply-funexp e))(cfv (apply-actual e)))]
        
