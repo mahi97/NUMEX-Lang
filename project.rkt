@@ -36,6 +36,7 @@
 
 (struct munit   ()      #:transparent) ;; unit value -- good for ending a list
 (struct ismunit (e)     #:transparent) ;; if e1 is unit then true else false
+(struct isnumexlist (e)     #:transparent) ;; if e1 is list then true else false
 
 ;; a closure is not in "source" programs; it is what functions evaluate to
 (struct closure (env f) #:transparent) 
@@ -170,7 +171,12 @@
               (bool (munit? v1))
          )]
       
-  
+         [(isnumexlist? e)
+        (let ([v1 (eval-under-env (isnumexlist-e e) env)])
+              (cond[(munit? v1) (bool #t)]
+                   [(apair? v1) (eval-under-env (isnumexlist (2nd v1)) env)]
+                   [#t (bool #f)])
+         )]
         ;;
         ;; Logical Operations
         ;;
@@ -178,13 +184,13 @@
         [(andalso? e) 
          (let ([v1 (eval-under-env (andalso-e1 e) env)])
            (let ([v3 (cond[(bool? v1) v1]
-                          [(num? v1) (if (eq? (num-int v1) 0) (bool #f) (bool #t))]
+                       ;   [(num? v1) (if (eq? (num-int v1) 0) (bool #f) (bool #t))]
                           [#t error "NUMEX and-also applied to non-number or non-boolean"])])
            (if (and (bool? v3) (eq? (bool-bit v3) #f))
                (bool #f)
                (let ([v2 (eval-under-env (andalso-e2 e) env)])
            (let ([v4 (cond[(bool? v2) v2]
-                          [(num? v2) (if (eq? (num-int v2) 0) (bool #f) (bool #t))]
+                       ;   [(num? v2) (if (eq? (num-int v2) 0) (bool #f) (bool #t))]
                           [#t error "NUMEX and-also applied to non-number or non-boolean"])])
                  v4
                  )))
@@ -322,7 +328,7 @@
               )
         )
   )
-  
+
 
 ;; Challenge Problem
 
@@ -354,8 +360,8 @@
        ;;
 
        [(cnd? e) (cnd (compute-free-vars (cnd-e1 e)) (compute-free-vars (cnd-e2 e)) (compute-free-vars (cnd-e3 e)))]
-       [(iseq? e) (iseq (compute-free-vars iseq-e1) (compute-free-vars iseq-e2))]
-       [(ifnzero? e) (ifnzero (compute-free-vars ifnzero-e1 e) (compute-free-vars ifnzero-e2 e) (compute-free-vars ifnzero-e3 e))]
+       [(iseq? e) (iseq (compute-free-vars (iseq-e1 e)) (compute-free-vars (iseq-e2 e)))]
+       [(ifnzero? e) (ifnzero (compute-free-vars (ifnzero-e1 e)) (compute-free-vars (ifnzero-e2 e)) (compute-free-vars (ifnzero-e3 e)))]
        [(ifleq? e) (ifleq (compute-free-vars (ifleq-e1 e)) (compute-free-vars (ifleq-e2 e)) (compute-free-vars (ifleq-e3 e)) (compute-free-vars (ifleq-e4 e)))]
        [(ismunit? e) (ismunit (compute-free-vars (ismunit-e e)))]
 
@@ -412,8 +418,8 @@
        ;;
 
        [(cnd? e) (set-union (cfv (cnd-e1 e)) (cfv (cnd-e2 e)) (cfv (cnd-e3 e)))]
-       [(iseq? e) (set-union (cfv iseq-e1) (cfv iseq-e2))]
-       [(ifnzero? e) (set-union (cfv ifnzero-e1 e) (cfv ifnzero-e2 e) (cfv ifnzero-e3 e))]
+       [(iseq? e) (set-union (cfv (iseq-e1 e)) (cfv (iseq-e2 e)))]
+       [(ifnzero? e) (set-union (cfv (ifnzero-e1 e)) (cfv (ifnzero-e2 e)) (cfv (ifnzero-e3 e)))]
        [(ifleq? e) (set-union (cfv (ifleq-e1 e)) (cfv (ifleq-e2 e)) (cfv (ifleq-e3 e)) (cfv (ifleq-e4 e)))]
        [(ismunit? e) (cfv (ismunit-e e))]
 
@@ -421,8 +427,8 @@
        ;; Logical Operations
        ;;
         
-       [(andalso? e) (set-union (andalso-e1 e) (andalso-e2 e))]
-       [(orelse? e) (set-union (orelse-e1 e) (orelse-e2 e))]
+       [(andalso? e) (set-union (cfv (andalso-e1 e)) (cfv (andalso-e2 e)))]
+       [(orelse? e) (set-union (cfv (orelse-e1 e)) (cfv (orelse-e2 e)))]
 
        ;;
        ;; Arithmetic Operations
@@ -444,7 +450,7 @@
 
 (define (new-env env free)
   (cond[(null? env) null]
-       [(set-member? free (car (car env))) (cons (car env) (new-env (cdr env) (set-remove free (car (car (env))))))]
+       [(set-member? free (car (car env))) (cons (car env) (new-env (cdr env) (set-remove free (car (car env)))))]
        [#t (new-env (cdr env) free)]
   )
   )
@@ -463,8 +469,8 @@
 
        [(fun-challenge? e)
         (if (and (or (string? (fun-challenge-nameopt e)) (null? (fun-challenge-nameopt e))) (string? (fun-challenge-formal e)))
-        (closure (new-env env fun-challenge-freevars) e)
-        (error "NUMEX function name and parameter name must be string"))]
+            (closure (new-env env (fun-challenge-freevars e)) e)
+            (error "NUMEX function name and parameter name must be string"))]
         
        [(with? e)
         (eval-under-env-c (with-e2 e) (cons (cons (with-s e)(eval-under-env-c (with-e1 e) env)) env))]
@@ -478,6 +484,16 @@
                   (eval-under-env-c (fun-challenge-body (closure-f v1)) (cons (cons (fun-challenge-nameopt (closure-f v1)) v1) (cons (cons (fun-challenge-formal (closure-f v1)) v2) (closure-env v1)))))
               (error  "NUMUX apply applied to non-closure" v1 (apply-funexp e))
              ))]
+
+      ;  [(apply? e)
+      ;  (let ([v1 (eval-under-env-c (apply-funexp e) env)]
+      ;        )
+      ;    (if (closure? v1)
+      ;        (if (null? (fun-challenge-nameopt (closure-f v1)))
+      ;            (eval-under-env-c (fun-challenge-body (closure-f v1)) (cons (cons (fun-challenge-formal (closure-f v1)) v2) (closure-env v1)))
+      ;            (eval-under-env-c (fun-challenge-body (closure-f v1)) (cons (cons (fun-challenge-nameopt (closure-f v1)) v1) (cons (cons (fun-challenge-formal (closure-f v1)) v2) (closure-env v1)))))
+      ;        (error  "NUMUX apply applied to non-closure" v1 (apply-funexp e))
+      ;       ))]
        
        ;;
        ;; Pairs 

@@ -132,6 +132,46 @@
                  (list (num 10) (num 15))
                  "test45")
 
+(check-equal? (numexlist->racketlist
+                  (eval-exp (apply (apply numex-all-gt (num 5))
+                                  (racketlist->numexlist 
+                                   (list (num 10) (num 0) (num 0) (num 15))))))
+                 (list (num 10) (num 15))
+                 "mytest1")
+
+(check-equal? (numexlist->racketlist
+                  (eval-exp (apply (apply numex-filter (lam null "a" (var "a")))
+                                  (racketlist->numexlist 
+                                   (list (num 10) (num 0) (num 0) (num 15))))))
+                 (list (num 10) (num 15))
+                 "mytest2")
+
+(check-equal? (numexlist->racketlist
+                  (eval-exp (apply (apply numex-filter (lam null "b" (num 0)))
+                                  (racketlist->numexlist 
+                                   (list (num 0) (num 10) (num 0) (num 15))))))
+                 (list (num 0) (num 0))
+                 "mytest3")
+
+(check-equal? (numexlist->racketlist
+                  (eval-exp (apply (apply numex-all-gt (num 5))
+                                  (racketlist->numexlist 
+                                   (list (num 10) (num 0) (num 15) (num 0) (num 20) (num 0))))))
+                 (list (num 10) (num 15) (num 20))
+                 "mytest4")
+
+(check-equal? (eval-exp (isnumexlist (apair (num 3) (apair (num 4) (munit)))))
+                 (bool #t)
+                 "mytest5")
+
+(check-equal? (eval-exp (isnumexlist (apair (munit) (apair (num 4) (munit)))))
+                 (bool #t)
+                 "mytest6")
+
+(check-equal? (eval-exp (isnumexlist (apair (apair (num 3) (num 4)) (apair (num 4) (num 5)))))
+                 (bool #f)
+                 "mytest7")
+
    (test-equal? "test46"
     (list (num 3) (num 4) (bool #t))
     (numexlist->racketlist (apair (num 3) (apair (num 4) (apair (bool #t) (munit))))))
@@ -428,9 +468,7 @@
                   (apply (apply numex-all-gt (num 2) )
                    (apair (num 2) (apair (bool #t) (apair (num -2) (munit)))))))
                   "test131")
-
-   
-   ))
+))
 
 
 (require rackunit/text-ui)
